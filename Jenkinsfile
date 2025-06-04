@@ -3,18 +3,18 @@ pipeline {
 
     environment {
         IMAGE_NAME = "zemandic/myapp"
-        GITOPS_REPO = "https://github.com/zemandic/app-repo"
+        GITOPS_REPO = "https://github.com/zemandic/gitops-repo.git"
         MANIFEST_PATH = "k8s/myapp-deployment.yaml"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout App Repo') {
             steps {
-                git 'https://github.com/zemandic/app-repo'
+                git url: 'https://github.com/zemandic/app-repo.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build and Push Docker Image') {
             steps {
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
@@ -25,21 +25,28 @@ pipeline {
             }
         }
 
-        stage('Update Manifests') {
+        stage('Update GitOps Manifests') {
             steps {
-                script {
-                    sh """
-                        git clone $GITOPS_REPO gitops
-                        cd gitops
-                        sed -i 's|image: .*|image: $IMAGE_NAME:$IMAGE_TAG|' $MANIFEST_PATH
-                        git config user.name "jenkins"
-                        git config user.email "jenkins@example.com"
-                        git commit -am "Update image to $IMAGE_TAG"
-                        git push
-                    """
+                withCredentials([usernamePassword(
+                    credentialsId: 'zemandic',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    script {
+                        sh """
+                            rm -rf gitops
+                            git clone https://$GIT_USER:$GIT_PASS@github.com/zemandic/gitops-repo.git gitops
+                            cd gitops
+                            sed -i 's|image: .*|image: $IMAGE_NAME:$IMAGE_TAG|' $MANIFEST_PATH
+                            git config user.name "jenkins"
+                            git config user.email "jenkins@example.com"
+                            git add $MANIFEST_PATH
+                            git commit -m "Update image to $IMAGE_TAG"
+                            git push https://$GIT_USER:$GIT_PASS@github.com/zemandic/gitops-repo.git HEAD:main
+                        """
+                    }
                 }
             }
         }
     }
 }
-
