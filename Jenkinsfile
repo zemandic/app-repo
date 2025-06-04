@@ -19,7 +19,13 @@ pipeline {
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
                     sh "docker build -t $IMAGE_NAME:$imageTag ."
-                    sh "docker push $IMAGE_NAME:$imageTag"
+                    withCredentials([usernamePassword(credentialsId: 'zemandic', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh """
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push $IMAGE_NAME:$imageTag
+                            docker logout
+                        """
+                    }
                     env.IMAGE_TAG = imageTag
                 }
             }
@@ -50,3 +56,4 @@ pipeline {
         }
     }
 }
+
