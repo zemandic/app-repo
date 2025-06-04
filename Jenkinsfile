@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout App Repo') {
             steps {
-                git url: 'https://github.com/zemandic/app-repo.git'
+                git branch: 'main', url: 'https://github.com/zemandic/app-repo.git'
             }
         }
 
